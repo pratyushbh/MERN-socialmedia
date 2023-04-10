@@ -11,9 +11,9 @@ app.use(bodyParser.urlencoded({limit:"30mb",extended:true}));
 app.use(cors())
 app.use('/posts',postRouter)
 
-const CONNECTION_URL= 'mongodb+srv://pratyush:pass120303@cluster0.dvhvvf3.mongodb.net/?retryWrites=true&w=majority'
+const CONNECTION_URL= 'mongodb+srv://pratyush:ajrSc9Sa6CUn7N0Q@clustermem.ckzgjkf.mongodb.net/?retryWrites=true&w=majority'
 const PORT=process.env.PORT||8000;
 
 mongoose.connect(CONNECTION_URL,{useNewUrlParser:true,useUnifiedTopology:true})
-.then(()=>{app.listen(PORT,()=>{console.log("hello world")})})
+.then(()=>{app.listen(PORT,()=>{console.log(`Server is running on port ${PORT}`)})})
 .catch((error)=>{console.log(error)})
