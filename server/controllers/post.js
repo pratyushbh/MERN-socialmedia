@@ -2,20 +2,45 @@ import mongoose from "mongoose";
 import postModel from "../models/postMessage.js"
 
 export const getPosts= async(req,res)=>{
+    const {page}=req.query;
     try {
-        const postMessage=await postModel.find();
-        res.status(200).json(postMessage);
+        const LIMIT=8;
+        const startIndex=(Number(page)-1)*LIMIT;
+        const total=await postModel.countDocuments({});
+        const postMessage=await postModel.find().sort({_id:-1}).limit(LIMIT).skip(startIndex);
+        res.status(200).json({data:postMessage,currentPage:Number(page),numberOfPage:Math.ceil(total/LIMIT)});
     } catch (error) {
         res.status(404).json({message:error.message})
     }
 }
 
+export const getPostsBySearch= async(req,res)=>{
+    const {searchQuery,tags}=req.query
+    console.log(searchQuery);
+    try {
+        const title=new RegExp(searchQuery, 'i');
+        const posts=await postModel.find({$or:[{title}, {tags:{$in:tags.split(',')}}]});
+        res.json({data: posts});
+    } catch (error) {
+        res.status(404).json({message:error.message})
+    }
+}
+export const getPostById = async (req, res) => { 
+    const { id } = req.params;
+    try {
+        const post = await postModel.findById(id)
+        res.status(200).json(post);
+    } catch (error) {
+        res.status(404).json({ message: error.message });
+    }
+}
+
 export const createPost= async (req,res)=>{
-    console.log(req.body);
     const post=req.body;
 
-    const newPost=new postModel(post)
+    const newPost=new postModel({...post,creator: req.userId,createdAt: new Date().toISOString()})
     try {
+        console.log(newPost);
         await newPost.save()
 
         res.status(201).json(newPost)
@@ -42,11 +67,23 @@ export const deletePost=async (req,res)=>{
 }
 export const likePost= async(req,res) =>{
     const {id:_id}=req.params;
+    if(!req.userId) return res.json({message:"Unauthenticated"});
+    
     if(!mongoose.Types.ObjectId.isValid(_id)){
         return res.status(404).send('No Post with that id');
     }
     const post= await postModel.findById(_id);
-    const updatedPost=await postModel.findByIdAndUpdate(_id,{likeCount:post.likeCount+1},{new:true})
+
+    const index=post.likes.findIndex((id)=>{ id===String(req.userId) });
+
+    if(index===-1){
+        post.likes.push(req.userId);
+    }
+    else{
+        post.likes=post.likes.filter((id)=>id!==String(req.userId));
+    }
+
+    const updatedPost=await postModel.findByIdAndUpdate(_id,post,{new:true})
 
     res.json(updatedPost);
 }
