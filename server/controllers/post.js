@@ -14,9 +14,23 @@ export const getPosts= async(req,res)=>{
     }
 }
 
+export const commentPost=async(req,res)=>{
+    try {
+        const {id}=req.params;
+        const {finalComment}=req.body;
+        const post=await postModel.findById(id);
+        post.comments.push(finalComment)
+        
+        const updatedPost= await postModel.findByIdAndUpdate(id,post,{new:true});
+        console.log(updatedPost)
+        res.json(updatedPost)
+    } catch (error) {
+        console.log(error)
+    }
+}
+
 export const getPostsBySearch= async(req,res)=>{
     const {searchQuery,tags}=req.query
-    console.log(searchQuery);
     try {
         const title=new RegExp(searchQuery, 'i');
         const posts=await postModel.find({$or:[{title}, {tags:{$in:tags.split(',')}}]});
@@ -40,7 +54,6 @@ export const createPost= async (req,res)=>{
 
     const newPost=new postModel({...post,creator: req.userId,createdAt: new Date().toISOString()})
     try {
-        console.log(newPost);
         await newPost.save()
 
         res.status(201).json(newPost)
@@ -59,31 +72,34 @@ export const updatePost=async (req,res)=>{
 }
 export const deletePost=async (req,res)=>{
     const {id:_id}=req.params;
+    console.log(_id);
     if(!mongoose.Types.ObjectId.isValid(_id)){
         return res.status(404).send('No Post with that id');
     }
-    await postModel.findByIdAndRemove(_id);
+    const result=await postModel.findByIdAndRemove(_id);
+    console.log(result);
     res.json({message:"post deleted successfully"})
 }
 export const likePost= async(req,res) =>{
-    const {id:_id}=req.params;
-    if(!req.userId) return res.json({message:"Unauthenticated"});
+    const { id } = req.params;
+
+    if (!req.userId) {
+        return res.json({ message: "Unauthenticated" });
+      }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(404).send(`No post with id: ${id}`);
     
-    if(!mongoose.Types.ObjectId.isValid(_id)){
-        return res.status(404).send('No Post with that id');
-    }
-    const post= await postModel.findById(_id);
+    const post = await postModel.findById(id);
 
-    const index=post.likes.findIndex((id)=>{ id===String(req.userId) });
+    const index = post.likes.findIndex((id) => id ===String(req.userId));
 
-    if(index===-1){
-        post.likes.push(req.userId);
-    }
-    else{
-        post.likes=post.likes.filter((id)=>id!==String(req.userId));
+    if (index === -1) {
+      post.likes.push(req.userId);
+    } else {
+      post.likes = post.likes.filter((id) => id !== String(req.userId));
     }
 
-    const updatedPost=await postModel.findByIdAndUpdate(_id,post,{new:true})
+    const updatedPost = await postModel.findByIdAndUpdate(id, post, { new: true });
 
-    res.json(updatedPost);
+    res.status(200).json(updatedPost);
 }
